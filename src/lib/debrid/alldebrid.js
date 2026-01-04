@@ -32,7 +32,7 @@ export default class AllDebrid {
   }
 
   async getProgressTorrents(torrents){
-    const res = await this.#request('GET', '/magnet/status');
+    const res = await this.#request('GET', '.1/magnet/status');
     return res.data.magnets.reduce((progress, magnet) => {
       progress[magnet.hash] = {
         percent: magnet.processingPerc || 0,
@@ -63,8 +63,9 @@ export default class AllDebrid {
   }
 
   async getDownload(file){
-    const query = {link: file.url};
-    const res = await this.#request('GET', '/link/unlock', {query});
+    const body = new FormData();
+    body.append('link', file.url);
+    const res = await this.#request('POST', '/link/unlock', {body});
     return res.data.link;
   }
 
@@ -75,18 +76,46 @@ export default class AllDebrid {
   async #getFilesFromTorrent(id){
 
     const query = {id};
-    let torrent = (await this.#request('GET', '/magnet/status', {query})).data.magnets;
+    let torrent = (await this.#request('GET', '.1/magnet/status', {query})).data.magnets;
 
+    console.log(`Torrent ${id} status:`, torrent.status, 'statusCode:', torrent.statusCode);
+    
     if(torrent.status != 'Ready'){
       throw new Error(ERROR.NOT_READY);
     }
 
-    return torrent.links.map((file, index) => {
+    const body = new FormData();
+    body.append('id[]', id);
+    const filesRes = await this.#request('POST', '/magnet/files', {body});
+    const magnetFiles = filesRes.data.magnets[0] || filesRes.data.magnets;
+
+    // Flatten the file tree structure recursively
+    const flattenFiles = (items, path = '') => {
+      const files = [];
+      for (const item of items) {
+        if (item.e) {
+          // It's a folder, recurse into it
+          files.push(...flattenFiles(item.e, path ? `${path}/${item.n}` : item.n));
+        } else if (item.l) {
+          // It's a file
+          files.push({
+            name: path ? `${path}/${item.n}` : item.n,
+            size: item.s,
+            url: item.l
+          });
+        }
+      }
+      return files;
+    };
+
+    const allFiles = flattenFiles(magnetFiles.files);
+
+    return allFiles.map((file, index) => {
       return {
-        name: file.filename,
+        name: file.name,
         size: file.size,
         id: `${torrent.id}:${index}`,
-        url: file.link,
+        url: file.url,
         ready: true
       };
     });
