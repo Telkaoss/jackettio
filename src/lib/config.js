@@ -110,10 +110,11 @@ export default {
     {value: 'russian',    emoji: '🇷🇺', iso639: 'ru', pattern: 'rus(sian)?'},
     {value: 'swedish',    emoji: '🇸🇪', iso639: 'sv', pattern: 'swedish'},
     {value: 'tamil',      emoji: '🇮🇳', iso639: 'ta', pattern: 'tamil'},
+    {value: 'ukrainian',  emoji: '🇺🇦', iso639: 'uk', pattern: 'ukrain(ian)?|ukr|укра(їнська|iнська)?|укр'},
     {value: 'turkish',    emoji: '🇹🇷', iso639: 'tr', pattern: 'turkish'}
   ].map(lang => {
     lang.label = `${lang.emoji} ${lang.value.charAt(0).toUpperCase() + lang.value.slice(1)}`;
-    lang.pattern = new RegExp(` ${lang.pattern} `, 'i');
+    lang.pattern = new RegExp(`(${lang.pattern})`, 'i');
     return lang;
   })
 }

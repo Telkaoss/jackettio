@@ -5,7 +5,8 @@ export function numberPad(number, count){
 }
 
 export function parseWords(str){
-  return str.replace(/[^a-zA-Z0-9]+/g, ' ').split(' ').filter(Boolean);
+  // Keep all unicode letters and numbers so non-Latin titles (e.g., Toloka) are parsed correctly
+  return str.replace(/[^\p{L}\p{N}]+/gu, ' ').split(' ').filter(Boolean);
 }
 
 export function sortBy(...keys){

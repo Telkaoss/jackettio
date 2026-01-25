@@ -179,10 +179,19 @@ async function getTorrents(userConfig, metaInfos, debridInstance){
       if(!qualities.includes(torrent.quality))return false;
       const torrentWords = parseWords(torrent.name.toLowerCase());
       if(excludeKeywords.find(word => torrentWords.includes(word)))return false;
+      if(type === 'series'){
+        // If season is present in the name, ensure it matches the requested season
+        const seasonMatch = torrent.name.match(/S(\d{1,2})/i) || torrent.name.match(/season[ ._-]?(\d{1,2})/i);
+        if(seasonMatch && parseInt(seasonMatch[1]) !== season){
+          return false;
+        }
+      }
       return true;
     };
     const filterLanguage = (torrent) => {
       if(priotizeLanguages.length == 0)return true;
+      // If we cannot detect language, don't drop the torrent
+      if(!torrent.languages || torrent.languages.length === 0)return true;
       return torrent.languages.find(lang => ['multi'].concat(priotizeLanguages).includes(lang.value));
     };
     const filterYear = (torrent) => {
@@ -190,7 +199,8 @@ async function getTorrents(userConfig, metaInfos, debridInstance){
         return true; // Always allow if no year is detected in the title
       }
       // Allow if the detected year is within the range [requested year - 1, requested year + 1]
-      return Math.abs(torrent.year - year) <= 1;
+      const delta = Math.abs(torrent.year - year);
+      return delta <= 1;
     };
     const filterSlowIndexer = (indexer) => config.slowIndexerRequest <= 0 || getSlowIndexerStats(indexer.id).count < config.slowIndexerRequest;
 
@@ -223,7 +233,17 @@ async function getTorrents(userConfig, metaInfos, debridInstance){
       // Promises for the primary title
       if (primaryTitle) {
         const primaryPromises = indexers.map(indexer => 
-          timeoutIndexerSearch(indexer.id, jackett.searchMovieTorrents({...metaInfos, name: primaryTitle, indexer: indexer.id}), indexerTimeoutSec*1000)
+          timeoutIndexerSearch(
+            indexer.id, 
+            jackett.searchMovieTorrents({
+              ...metaInfos, 
+              name: primaryTitle, 
+              imdbId: metaInfos.imdb_id || metaInfos.id, 
+              indexer: indexer.id,
+              supportedParams: indexer.searching.movie.supportedParams
+            }), 
+            indexerTimeoutSec*1000
+          )
         );
         searchPromises.push(...primaryPromises);
       } else {
@@ -272,9 +292,27 @@ async function getTorrents(userConfig, metaInfos, debridInstance){
 
     }else if(type == 'series'){
 
-      const episodesPromises = indexers.map(indexer => timeoutIndexerSearch(indexer.id, jackett.searchEpisodeTorrents({...metaInfos, indexer: indexer.id}), indexerTimeoutSec*1000));
+      const episodesPromises = indexers.map(indexer => timeoutIndexerSearch(
+        indexer.id, 
+        jackett.searchEpisodeTorrents({
+          ...metaInfos, 
+          imdbId: metaInfos.imdb_id || metaInfos.id, 
+          indexer: indexer.id,
+          supportedParams: indexer.searching.series.supportedParams
+        }), 
+        indexerTimeoutSec*1000
+      ));
       // const packsPromises = indexers.map(indexer => promiseTimeout(jackett.searchSeasonTorrents({...metaInfos, indexer: indexer.id}), indexerTimeoutSec*1000).catch(err => []));
-      const packsPromises = indexers.map(indexer => timeoutIndexerSearch(indexer.id, jackett.searchSerieTorrents({...metaInfos, indexer: indexer.id}), indexerTimeoutSec*1000));
+      const packsPromises = indexers.map(indexer => timeoutIndexerSearch(
+        indexer.id, 
+        jackett.searchSerieTorrents({
+          ...metaInfos, 
+          imdbId: metaInfos.imdb_id || metaInfos.id, 
+          indexer: indexer.id,
+          supportedParams: indexer.searching.series.supportedParams
+        }), 
+        indexerTimeoutSec*1000
+      ));
 
       const episodesTorrents = [].concat(...(await Promise.all(episodesPromises))).filter(filterSearch);
       // const packsTorrents = [].concat(...(await Promise.all(packsPromises))).filter(torrent => filterSearch(torrent) && parseWords(torrent.name.toUpperCase()).includes(`S${numberPad(season)}`));

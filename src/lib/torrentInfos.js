@@ -35,16 +35,32 @@ export async function get({link, id, magnetUrl, infoHash, name, size, type}){
   let parseInfos = null;
   let torrentLocation = '';
 
-  if(magnetUrl && infoHash && name && size > 0 && type){
+  // Prefer using magnet when available to avoid brittle HTTP downloads (e.g. Toloka HTML pages)
+  if(magnetUrl){
+    try{
+      parseInfos = await parseTorrent(magnetUrl);
+      link = magnetUrl;
+    }catch(err){
+      // keep parseInfos null to fallback on HTTP below
+    }
+  }
 
-    parseInfos = {
-      infoHash, 
-      name, 
-      length: size, 
-      private: (type == 'private')
-    };
+  if(!parseInfos){
 
-  }else{
+    if(magnetUrl && infoHash && name && size > 0 && type){
+
+      parseInfos = {
+        infoHash, 
+        name, 
+        length: size, 
+        private: (type == 'private')
+      };
+
+    }
+
+  }
+
+  if(!parseInfos){
 
     if(link.startsWith('http')){
 
