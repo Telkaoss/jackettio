@@ -129,7 +129,7 @@ function normalizeItems(items){
       obj[item.name] = item.value;
       return obj;
     }, {});
-    const quality = item.title.match(/(2160|1080|720|480|360)p/);
+    const quality = item.title.match(/(2160|1080|720|480|360)p/i) || (item.title.match(/\b(4K|UHD)\b/i) ? ['', '2160'] : null);
     const title = parseWords(item.title).join(' ');
     // Correction de la regex pour capturer 19xx ou 20xx
     const year = item.title.replace(quality ? quality[1] : '', '').match(/\b(19\d{2}|20\d{2})\b/);

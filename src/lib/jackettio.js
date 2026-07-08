@@ -398,24 +398,25 @@ async function getTorrents(userConfig, metaInfos, debridInstance){
 
         // console.log(`${stremioId} : ${cachedTorrents.length} cached torrents on ${debridInstance.shortName}`);
 
-        // Custom function to sort torrents by quality in descending order of resolutions
         const sortByQuality = (torrents) => {
+          const sortByQualityFirst = sortCached.some(([key]) => key === 'quality');
           return [...torrents].sort((a, b) => {
-            // Order of qualities: 2160p > 1080p > 720p > 480p > 360p > 0 (Unknown)
             const qualityOrder = { 2160: 5, 1080: 4, 720: 3, 480: 2, 360: 1, 0: 0 };
-            const qualityA = qualityOrder[a.quality] || 0;
-            const qualityB = qualityOrder[b.quality] || 0;
-            
-            if (qualityA !== qualityB) {
-              return qualityB - qualityA; // Sort in descending order by quality
+            if (sortByQualityFirst) {
+              const qualityA = qualityOrder[a.quality] || 0;
+              const qualityB = qualityOrder[b.quality] || 0;
+              if (qualityA !== qualityB) return qualityB - qualityA;
             }
-            
-            // If the qualities are the same, use other sorting criteria
             for (const [key, reverse] of sortCached) {
-              if (key !== 'quality') { // Ignore the quality criterion since it has already been processed
+              if (key !== 'quality') {
                 if (a[key] > b[key]) return reverse ? -1 : 1;
                 if (a[key] < b[key]) return reverse ? 1 : -1;
               }
+            }
+            if (!sortByQualityFirst) {
+              const qualityA = qualityOrder[a.quality] || 0;
+              const qualityB = qualityOrder[b.quality] || 0;
+              if (qualityA !== qualityB) return qualityB - qualityA;
             }
             return 0;
           });
