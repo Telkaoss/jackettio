@@ -127,6 +127,8 @@ export default class StremThru {
                 }));
 
                 if (files.length > 0 && isValidCachedFiles(files)) {
+                  const largestFile = files.reduce((a, b) => a.size > b.size ? a : b, files[0]);
+                  if (largestFile) torrent.size = largestFile.size;
                   cachedResults.push(torrent);
                 }
               }
